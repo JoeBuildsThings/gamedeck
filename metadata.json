@@ -1,0 +1,6 @@
+{
+  "name": "GameDeck",
+  "description": "Rootless in-game performance overlay and booster with real-time FPS, frame times, CPU/RAM telemetry, and game profiles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
