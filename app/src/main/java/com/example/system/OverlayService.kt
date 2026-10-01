@@ -141,6 +141,7 @@ class OverlayService : Service() {
     private fun observePreferencesAndTelemetry() {
         // Collect telemetry
         GameDeckApp.instance.telemetryManager.start(serviceScope)
+        UsageDetector.startMonitoring(applicationContext, GameDeckApp.instance.appScope)
         serviceScope.launch {
             GameDeckApp.instance.telemetryManager.telemetryFlow.collectLatest { metrics ->
                 currentMetrics.value = metrics

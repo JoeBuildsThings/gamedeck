@@ -164,7 +164,7 @@ class FpsCollector(
         }
 
         // Query latency
-        val latencyRes = shizukuBridge.exec("dumpsys SurfaceFlinger --latency \"$layer\"", timeoutMs = 1500L)
+        val latencyRes = shizukuBridge.exec("dumpsys SurfaceFlinger --latency " + shellQuote(layer), timeoutMs = 1500L)
         if (latencyRes.isSuccess) {
             val parseResult = SurfaceFlingerParser.parseLatencyOutput(latencyRes.getOrNull() ?: "")
             if (parseResult != null) {
@@ -188,6 +188,8 @@ class FpsCollector(
             isRealFps = false
         )
     }
+
+    private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
 
     private fun getDisplayRefreshRate(): Float {
         return try {

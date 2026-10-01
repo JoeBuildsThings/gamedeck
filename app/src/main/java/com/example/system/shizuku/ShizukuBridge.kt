@@ -183,25 +183,33 @@ class ShizukuBridge(private val context: Context) {
         val method = newProcessMethod
             ?: return@withContext Result.failure(IllegalStateException("Shizuku newProcess method unavailable"))
 
+        var process: java.lang.Process? = null
+        var timedOut = false
         try {
-            withTimeout(timeoutMs) {
-                val process = method.invoke(null, arrayOf("sh", "-c", command), null, null) as java.lang.Process
-                val reader = BufferedReader(InputStreamReader(process.inputStream))
-                val output = StringBuilder()
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    output.append(line).append("\n")
-                }
-                reader.close()
-                val exitCode = process.waitFor()
-                if (exitCode == 0) {
-                    Result.success(output.toString())
-                } else {
-                    Result.failure(RuntimeException("Command failed with exit code $exitCode: $command"))
-                }
+            process = method.invoke(null, arrayOf("sh", "-c", "$command 2>/dev/null"), null, null) as java.lang.Process
+            val proc = process
+            val watchdog = launch {
+                delay(timeoutMs)
+                timedOut = true
+                proc.destroy()
+            }
+            val output = try {
+                proc.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                watchdog.cancel()
+            }
+            val exitCode = proc.waitFor()
+            if (timedOut) {
+                Result.failure<String>(RuntimeException("Command timed out after ${timeoutMs}ms: $command"))
+            } else if (exitCode == 0) {
+                Result.success(output)
+            } else {
+                Result.failure<String>(RuntimeException("Command failed with exit code $exitCode: $command"))
             }
         } catch (e: Throwable) {
-            Result.failure(e)
+            Result.failure<String>(e)
+        } finally {
+            try { process?.destroy() } catch (_: Throwable) {}
         }
     }
 

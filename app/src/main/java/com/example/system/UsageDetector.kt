@@ -21,6 +21,7 @@ object UsageDetector {
     private var monitoringJob: Job? = null
     private var lastForegroundPackage: String? = null
     private var activeGamePackage: String? = null
+    private var seeded = false
 
     fun isUsagePermissionGranted(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
@@ -51,7 +52,7 @@ object UsageDetector {
                     val isAutoDetect = GameDeckApp.instance.repository.isAutoDetectEnabledFlow.first()
                     if (isAutoDetect && isUsagePermissionGranted(context) && usageStatsManager != null) {
                         val endTime = System.currentTimeMillis()
-                        val startTime = endTime - 3000L
+                        val startTime = if (seeded) endTime - 3000L else endTime - 120_000L
                         val events = usageStatsManager.queryEvents(startTime, endTime)
                         val event = UsageEvents.Event()
                         var latestPackage: String? = null
@@ -63,6 +64,7 @@ object UsageDetector {
                             }
                         }
 
+                        seeded = true
                         if (!latestPackage.isNullOrBlank() && latestPackage != lastForegroundPackage) {
                             handleForegroundAppChanged(context, latestPackage)
                         }

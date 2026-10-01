@@ -86,7 +86,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         refreshPermissions()
         loadInstalledApps()
-        UsageDetector.startMonitoring(app, viewModelScope)
+        UsageDetector.startMonitoring(app, app.appScope)
         app.telemetryManager.start(viewModelScope)
     }
 
