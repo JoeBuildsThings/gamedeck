@@ -215,7 +215,7 @@ private fun ModeCard(
                     color = if (selected) InkLight else MutedGrey,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.3).sp,
+                    letterSpacing = (-0.3f).sp,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -254,7 +254,7 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
                 color = AccentRedBright,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp,
+                letterSpacing = (-0.5f).sp,
             )
         }
     }

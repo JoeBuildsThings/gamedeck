@@ -117,7 +117,7 @@ fun GameDeckApp(
                             color = InkLight,
                             fontWeight = FontWeight.Bold,
                             fontSize = 19.sp,
-                            letterSpacing = (-0.5).sp,
+                            letterSpacing = (-0.5f).sp,
                         )
                         Spacer(Modifier.width(10.dp))
                         Text("v0.1", color = MutedGrey, fontSize = 11.sp)
