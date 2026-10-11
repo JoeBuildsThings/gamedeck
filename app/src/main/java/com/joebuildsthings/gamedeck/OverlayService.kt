@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.joebuildsthings.gamedeck.ui.theme.AccentRed
 import com.joebuildsthings.gamedeck.ui.theme.AccentRedBright
 import com.joebuildsthings.gamedeck.ui.theme.AccentRedDim
@@ -52,31 +53,48 @@ class OverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // 1. Start foreground immediately to satisfy Android's 5-second rule
-        try {
-            val notification = buildNotification()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-            Log.i(TAG, "Foreground service started successfully.")
-        } catch (t: Throwable) {
-            Log.e(TAG, "Failed to start foreground service.", t)
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        // 2. Now handle the intent action
         when (intent?.action) {
             ACTION_START -> {
-                if (overlayView == null) {
-                    try {
-                        showOverlay()
-                        Log.i(TAG, "Overlay view added successfully.")
-                    } catch (t: Throwable) {
-                        Log.e(TAG, "Failed to add overlay view.", t)
+                try {
+                    // Phase 1: Immediately start foreground with a minimal notification
+                    // to satisfy Android's 5-second rule.
+                    val minimalNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setContentTitle("GameDeck")
+                        .setContentText("Initializing...")
+                        .setSmallIcon(android.R.drawable.ic_menu_info_details)
+                        .setOngoing(true)
+                        .setSilent(true)
+                        .build()
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        ServiceCompat.startForeground(
+                            this,
+                            NOTIFICATION_ID,
+                            minimalNotification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                        )
+                    } else {
+                        startForeground(NOTIFICATION_ID, minimalNotification)
                     }
+                    Log.i(TAG, "Foreground service started with minimal notification.")
+
+                    // Phase 2: Now build the full notification and update it.
+                    val fullNotification = buildNotification()
+                    val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    mgr.notify(NOTIFICATION_ID, fullNotification)
+                    Log.i(TAG, "Full notification updated.")
+
+                    if (overlayView == null) {
+                        try {
+                            showOverlay()
+                            Log.i(TAG, "Overlay view added successfully.")
+                        } catch (t: Throwable) {
+                            Log.e(TAG, "Failed to add overlay view.", t)
+                        }
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to start foreground service.", t)
+                    stopSelf()
                 }
             }
             ACTION_STOP -> {
