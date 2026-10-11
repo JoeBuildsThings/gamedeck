@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -41,6 +42,7 @@ class OverlayService : Service() {
         const val ACTION_STOP = "com.joebuildsthings.gamedeck.STOP"
         private const val CHANNEL_ID = "gamedeck_overlay"
         private const val NOTIFICATION_ID = 1
+        private const val TAG = "GameDeck"
     }
 
     private var windowManager: WindowManager? = null
@@ -50,23 +52,31 @@ class OverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 1. Start foreground immediately to satisfy Android's 5-second rule
+        try {
+            val notification = buildNotification()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            Log.i(TAG, "Foreground service started successfully.")
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to start foreground service.", t)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // 2. Now handle the intent action
         when (intent?.action) {
             ACTION_START -> {
-                try {
-                    val notification = buildNotification()
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        startForeground(
-                            NOTIFICATION_ID,
-                            notification,
-                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                        )
-                    } else {
-                        startForeground(NOTIFICATION_ID, notification)
+                if (overlayView == null) {
+                    try {
+                        showOverlay()
+                        Log.i(TAG, "Overlay view added successfully.")
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to add overlay view.", t)
                     }
-                    if (overlayView == null) showOverlay()
-                } catch (t: Throwable) {
-                    android.util.Log.e("GameDeck", "Overlay start failed", t)
-                    stopSelf()
                 }
             }
             ACTION_STOP -> {
@@ -114,13 +124,11 @@ class OverlayService : Service() {
 
     private fun showOverlay() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -128,12 +136,10 @@ class OverlayService : Service() {
             y = 200
         }
         layoutParams = params
-
         val view = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent { GameDeckTheme { Pill() } }
         }
-
         var initialX = 0
         var initialY = 0
         var touchX = 0f
@@ -156,7 +162,6 @@ class OverlayService : Service() {
                 else -> false
             }
         }
-
         windowManager?.addView(view, params)
         overlayView = view
     }
