@@ -56,42 +56,19 @@ class OverlayService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 try {
-                    // Phase 1: Immediately start foreground with a minimal notification
-                    // to satisfy Android's 5-second rule.
-                    val minimalNotification = NotificationCompat.Builder(this, CHANNEL_ID)
-                        .setContentTitle("GameDeck")
-                        .setContentText("Initializing...")
-                        .setSmallIcon(android.R.drawable.ic_menu_info_details)
-                        .setOngoing(true)
-                        .setSilent(true)
-                        .build()
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        ServiceCompat.startForeground(
-                            this,
-                            NOTIFICATION_ID,
-                            minimalNotification,
+                    val notification = buildNotification()
+                    ServiceCompat.startForeground(
+                        this,
+                        NOTIFICATION_ID,
+                        notification,
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                        )
-                    } else {
-                        startForeground(NOTIFICATION_ID, minimalNotification)
-                    }
-                    Log.i(TAG, "Foreground service started with minimal notification.")
-
-                    // Phase 2: Now build the full notification and update it.
-                    val fullNotification = buildNotification()
-                    val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                    mgr.notify(NOTIFICATION_ID, fullNotification)
-                    Log.i(TAG, "Full notification updated.")
-
-                    if (overlayView == null) {
-                        try {
-                            showOverlay()
-                            Log.i(TAG, "Overlay view added successfully.")
-                        } catch (t: Throwable) {
-                            Log.e(TAG, "Failed to add overlay view.", t)
+                        } else {
+                            0
                         }
-                    }
+                    )
+                    Log.i(TAG, "Foreground service started.")
+                    if (overlayView == null) showOverlay()
                 } catch (t: Throwable) {
                     Log.e(TAG, "Failed to start foreground service.", t)
                     stopSelf()
@@ -99,12 +76,7 @@ class OverlayService : Service() {
             }
             ACTION_STOP -> {
                 removeOverlay()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                } else {
-                    @Suppress("DEPRECATION")
-                    stopForeground(true)
-                }
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
@@ -146,7 +118,8 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
