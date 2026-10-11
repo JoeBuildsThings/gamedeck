@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">GameDeck</string>
+    <string name="overlay_channel">GameDeck Overlay</string>
+</resources>
