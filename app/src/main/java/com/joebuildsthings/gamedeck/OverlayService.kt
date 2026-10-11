@@ -131,20 +131,32 @@ class OverlayService : Service() {
             y = 200
         }
         layoutParams = params
+
+        // 1. Create the lifecycle owner for our overlay
         val owner = OverlayLifecycleOwner()
         lifecycleOwner = owner
-        val view = ComposeView(this).apply {
-            setViewTreeLifecycleOwner(owner)
-            setViewTreeViewModelStoreOwner(owner)
-            setViewTreeSavedStateRegistryOwner(owner)
+
+        // 2. Create the ComposeView
+        val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent { GameDeckTheme { Pill() } }
         }
+
+        // 3. Create a plain View wrapper (FrameLayout) that will be the window's root
+        val wrapper = TouchInterceptor(this).apply {
+            // 4. IMPORTANT: Attach the lifecycle owners to the WRAPPER, not the ComposeView
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            addView(composeView)
+        }
+
+        // 5. Set touch listener on the wrapper for dragging
         var initialX = 0
         var initialY = 0
         var touchX = 0f
         var touchY = 0f
-        view.setOnTouchListener { _, event ->
+        wrapper.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = params.x
@@ -156,15 +168,17 @@ class OverlayService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     params.x = initialX + (event.rawX - touchX).toInt()
                     params.y = initialY + (event.rawY - touchY).toInt()
-                    windowManager?.updateViewLayout(view, params)
+                    windowManager?.updateViewLayout(wrapper, params)
                     true
                 }
                 else -> false
             }
         }
+
         owner.start()
-        windowManager?.addView(view, params)
-        overlayView = view
+        // 6. Add the WRAPPER to the WindowManager
+        windowManager?.addView(wrapper, params)
+        overlayView = wrapper
     }
 
     private fun removeOverlay() {
