@@ -1,17 +1,18 @@
 package com.joebuildsthings.gamedeck.screens
 
-import android.content.Context
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,7 +22,7 @@ import com.joebuildsthings.gamedeck.ui.theme.*
 private data class Mode(
     val name: String,
     val blurb: String,
-    val color: androidx.compose.ui.graphics.Color,
+    val color: Color,
 )
 
 private val modes = listOf(
@@ -43,10 +44,30 @@ fun HomeScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+            .padding(horizontal = 18.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        SectionLabel("Active mode")
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "PERFORMANCE MODE",
+                color = MutedGrey,
+                fontSize = 10.sp,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                modes[selected].name.uppercase(),
+                color = modes[selected].color,
+                fontSize = 10.sp,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             modes.forEachIndexed { i, mode ->
                 ModeCard(
@@ -58,10 +79,19 @@ fun HomeScreen(
             }
         }
 
-        SectionLabel("Overlay")
+        Spacer(Modifier.height(4.dp))
+
+        Text(
+            "FLOATING HUD",
+            color = MutedGrey,
+            fontSize = 10.sp,
+            letterSpacing = 2.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+
         Surface(
             color = PanelDark,
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, LineDark),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -72,11 +102,12 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Floating HUD", color = InkLight, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text("Overlay HUD", color = InkLight, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Spacer(Modifier.height(2.dp))
                         Text(
-                            if (hasPermission) "Permission granted" else "Permission required",
+                            if (hasPermission) "Ready" else "Grant permission",
                             color = if (hasPermission) SuccessGreen else WarnAmber,
-                            fontSize = 12.sp
+                            fontSize = 11.sp
                         )
                     }
                     Switch(
@@ -101,29 +132,44 @@ fun HomeScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .background(BgDark)
-                        .border(1.dp, LineDark, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 12.dp),
+                        .border(1.dp, LineDark, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Preview", color = MutedGrey, fontSize = 11.sp)
+                    Text("LIVE PREVIEW", color = MutedGrey, fontSize = 9.sp, letterSpacing = 2.sp)
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .background(AccentRedDim)
                             .border(1.dp, AccentRed, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .padding(horizontal = 14.dp, vertical = 5.dp)
                     ) {
-                        Text("-- FPS", color = AccentRedBright, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "-- FPS",
+                            color = AccentRedBright,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
                     }
                 }
             }
         }
 
-        SectionLabel("Live telemetry")
+        Spacer(Modifier.height(4.dp))
+
+        Text(
+            "LIVE TELEMETRY",
+            color = MutedGrey,
+            fontSize = 10.sp,
+            letterSpacing = 2.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             StatCard("FPS", "--", Modifier.weight(1f))
             StatCard("CPU", "--", Modifier.weight(1f))
@@ -136,17 +182,6 @@ fun HomeScreen(
 }
 
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text.uppercase(),
-        color = MutedGrey,
-        fontSize = 11.sp,
-        letterSpacing = 2.sp,
-        fontWeight = FontWeight.Medium,
-    )
-}
-
-@Composable
 private fun ModeCard(
     mode: Mode,
     selected: Boolean,
@@ -154,21 +189,24 @@ private fun ModeCard(
     onClick: () -> Unit,
 ) {
     val borderColor = if (selected) mode.color else LineDark
-    val bg = if (selected) mode.color.copy(alpha = 0.08f) else PanelDark
+    val bg = if (selected) mode.color.copy(alpha = 0.10f) else PanelDark
     Box(
         modifier
-            .height(84.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .height(94.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .padding(12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxHeight()) {
+        Column(
+            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxHeight()
+        ) {
             Box(
                 Modifier
-                    .size(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .size(8.dp)
+                    .clip(CircleShape)
                     .background(if (selected) mode.color else LineDark)
             )
             Column {
@@ -176,9 +214,15 @@ private fun ModeCard(
                     mode.name,
                     color = if (selected) InkLight else MutedGrey,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3).sp,
                 )
-                Text(mode.blurb, color = MutedGrey, fontSize = 10.sp)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    mode.blurb,
+                    color = if (selected) mode.color.copy(alpha = 0.9f) else MutedGrey,
+                    fontSize = 10.sp,
+                )
             }
         }
     }
@@ -188,18 +232,30 @@ private fun ModeCard(
 private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
         color = PanelDark,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, LineDark),
-        modifier = modifier.height(74.dp),
+        modifier = modifier.height(78.dp),
     ) {
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(label, color = MutedGrey, fontSize = 10.sp, letterSpacing = 1.5.sp)
-            Text(value, color = AccentRedBright, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                label,
+                color = MutedGrey,
+                fontSize = 9.sp,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                value,
+                color = AccentRedBright,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.5).sp,
+            )
         }
     }
 }

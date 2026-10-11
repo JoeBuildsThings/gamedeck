@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -50,12 +51,31 @@ class OverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                startForeground(NOTIFICATION_ID, buildNotification())
-                if (overlayView == null) showOverlay()
+                try {
+                    val notification = buildNotification()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        startForeground(
+                            NOTIFICATION_ID,
+                            notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                        )
+                    } else {
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
+                    if (overlayView == null) showOverlay()
+                } catch (t: Throwable) {
+                    android.util.Log.e("GameDeck", "Overlay start failed", t)
+                    stopSelf()
+                }
             }
             ACTION_STOP -> {
                 removeOverlay()
-                stopForeground(STOP_FOREGROUND_REMOVE)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                } else {
+                    @Suppress("DEPRECATION")
+                    stopForeground(true)
+                }
                 stopSelf()
             }
         }
@@ -68,15 +88,17 @@ class OverlayService : Service() {
     }
 
     private fun buildNotification(): Notification {
+        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
                 val ch = NotificationChannel(
                     CHANNEL_ID,
                     "GameDeck Overlay",
                     NotificationManager.IMPORTANCE_LOW
-                )
-                ch.setShowBadge(false)
+                ).apply {
+                    setShowBadge(false)
+                    enableVibration(false)
+                }
                 mgr.createNotificationChannel(ch)
             }
         }
@@ -85,6 +107,7 @@ class OverlayService : Service() {
             .setContentText("Overlay running")
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setOngoing(true)
+            .setSilent(true)
             .build()
     }
 
@@ -150,8 +173,14 @@ private fun Pill() {
             .clip(RoundedCornerShape(20.dp))
             .background(AccentRedDim)
             .border(1.dp, AccentRed, RoundedCornerShape(20.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 14.dp, vertical = 7.dp)
     ) {
-        Text("-- FPS", color = AccentRedBright, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            "-- FPS",
+            color = AccentRedBright,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.sp
+        )
     }
 }
