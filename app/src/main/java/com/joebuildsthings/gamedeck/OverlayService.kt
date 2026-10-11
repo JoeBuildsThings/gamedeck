@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
 import com.joebuildsthings.gamedeck.ui.theme.AccentRed
 import com.joebuildsthings.gamedeck.ui.theme.AccentRedBright
 import com.joebuildsthings.gamedeck.ui.theme.AccentRedDim
@@ -102,7 +103,7 @@ class OverlayService : Service() {
                 mgr.createNotificationChannel(ch)
             }
         }
-        return Notification.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("GameDeck")
             .setContentText("Overlay running")
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
