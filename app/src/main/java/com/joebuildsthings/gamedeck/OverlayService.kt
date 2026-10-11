@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.joebuildsthings.gamedeck.ui.theme.AccentRed
 import com.joebuildsthings.gamedeck.ui.theme.AccentRedBright
 import com.joebuildsthings.gamedeck.ui.theme.AccentRedDim
@@ -49,6 +52,7 @@ class OverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var layoutParams: WindowManager.LayoutParams? = null
+    private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -80,7 +84,7 @@ class OverlayService : Service() {
                 stopSelf()
             }
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -127,7 +131,12 @@ class OverlayService : Service() {
             y = 200
         }
         layoutParams = params
+        val owner = OverlayLifecycleOwner()
+        lifecycleOwner = owner
         val view = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent { GameDeckTheme { Pill() } }
         }
@@ -153,6 +162,7 @@ class OverlayService : Service() {
                 else -> false
             }
         }
+        owner.start()
         windowManager?.addView(view, params)
         overlayView = view
     }
@@ -160,6 +170,8 @@ class OverlayService : Service() {
     private fun removeOverlay() {
         overlayView?.let { runCatching { windowManager?.removeView(it) } }
         overlayView = null
+        lifecycleOwner?.destroy()
+        lifecycleOwner = null
     }
 }
 

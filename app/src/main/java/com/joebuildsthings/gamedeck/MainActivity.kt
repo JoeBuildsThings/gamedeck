@@ -12,6 +12,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -41,8 +44,29 @@ data class Tab(val label: String, val icon: ImageVector)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLog.install(applicationContext)
+        val lastCrash = CrashLog.consume(this)
         setContent {
             GameDeckTheme {
+                var crashText by remember { mutableStateOf(lastCrash) }
+                crashText?.let { text ->
+                    AlertDialog(
+                        onDismissRequest = { crashText = null },
+                        confirmButton = {
+                            TextButton(onClick = { crashText = null }) { Text("Close") }
+                        },
+                        title = { Text("Last crash") },
+                        text = {
+                            SelectionContainer {
+                                Text(
+                                    text,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.verticalScroll(rememberScrollState())
+                                )
+                            }
+                        }
+                    )
+                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = BgDark
