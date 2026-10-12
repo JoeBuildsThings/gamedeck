@@ -9,13 +9,6 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 
-/**
- * A ComposeView normally finds its lifecycle, saved state and view model owners
- * from an Activity. A Service has none of these, so Compose throws
- * "ViewTreeLifecycleOwner not found" the moment the view attaches to the window.
- * This class stands in for the Activity and is attached to the overlay view
- * before it is added to the WindowManager.
- */
 class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)

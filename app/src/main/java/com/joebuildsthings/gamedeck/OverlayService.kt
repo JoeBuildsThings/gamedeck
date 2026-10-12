@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
@@ -36,7 +37,6 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.joebuildsthings.gamedeck.ui.theme.AccentRed
 import com.joebuildsthings.gamedeck.ui.theme.AccentRedBright
-import com.joebuildsthings.gamedeck.ui.theme.AccentRedDim
 import com.joebuildsthings.gamedeck.ui.theme.GameDeckTheme
 
 class OverlayService : Service() {
@@ -132,26 +132,21 @@ class OverlayService : Service() {
         }
         layoutParams = params
 
-        // 1. Create the lifecycle owner for our overlay
         val owner = OverlayLifecycleOwner()
         lifecycleOwner = owner
 
-        // 2. Create the ComposeView
         val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-            setContent { GameDeckTheme { Pill() } }
+            setContent { GameDeckTheme { GlassPill() } }
         }
 
-        // 3. Create a plain View wrapper (FrameLayout) that will be the window's root
         val wrapper = TouchInterceptor(this).apply {
-            // 4. IMPORTANT: Attach the lifecycle owners to the WRAPPER, not the ComposeView
             setViewTreeLifecycleOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
             addView(composeView)
         }
 
-        // 5. Set touch listener on the wrapper for dragging
         var initialX = 0
         var initialY = 0
         var touchX = 0f
@@ -176,7 +171,6 @@ class OverlayService : Service() {
         }
 
         owner.start()
-        // 6. Add the WRAPPER to the WindowManager
         windowManager?.addView(wrapper, params)
         overlayView = wrapper
     }
@@ -190,18 +184,18 @@ class OverlayService : Service() {
 }
 
 @Composable
-private fun Pill() {
+private fun GlassPill() {
     Box(
         Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(AccentRedDim)
-            .border(1.dp, AccentRed, RoundedCornerShape(20.dp))
-            .padding(horizontal = 14.dp, vertical = 7.dp)
+            .clip(RoundedCornerShape(50))
+            .background(Color(0x33FFFFFF))
+            .border(1.dp, Color(0x55FFFFFF), RoundedCornerShape(50))
+            .padding(horizontal = 18.dp, vertical = 10.dp)
     ) {
         Text(
-            "-- FPS",
-            color = AccentRedBright,
-            fontSize = 12.sp,
+            "60 FPS",
+            color = Color.White,
+            fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.sp
         )
