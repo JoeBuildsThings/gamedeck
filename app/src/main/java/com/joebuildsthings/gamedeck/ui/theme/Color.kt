@@ -2,13 +2,23 @@ package com.joebuildsthings.gamedeck.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val BgDark = Color(0xFF0A0606)
-val PanelDark = Color(0xFF140A0A)
-val LineDark = Color(0xFF2A1515)
-val InkLight = Color(0xFFF0E8E8)
-val MutedGrey = Color(0xFFA89090)
-val AccentRed = Color(0xFFEF4444)
-val AccentRedBright = Color(0xFFF87171)
-val AccentRedDim = Color(0xFF7F1D1D)
-val SuccessGreen = Color(0xFF22C55E)
-val WarnAmber = Color(0xFFF59E0B)
+val BgDark = Color(0xFF06070A)
+val PanelDark = Color(0xFF0D1017)
+val PanelElevated = Color(0xFF141923)
+val LineDark = Color(0xFF222A38)
+val LineBright = Color(0xFF334155)
+
+val InkLight = Color(0xFFF1F5F9)
+val MutedGrey = Color(0xFF64748B)
+
+val AccentRed = Color(0xFFFF1E42)
+val AccentRedBright = Color(0xFFFF4D6A)
+val AccentRedDim = Color(0xFF3B0A14)
+
+val CyberCyan = Color(0xFF00F0FF)
+val CyberCyanDim = Color(0xFF06343B)
+
+val SuccessGreen = Color(0xFF00E676)
+val SuccessGreenDim = Color(0xFF05331D)
+
+val WarnAmber = Color(0xFFFFB300)

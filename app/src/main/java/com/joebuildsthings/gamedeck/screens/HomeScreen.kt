@@ -5,31 +5,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.joebuildsthings.gamedeck.*
 import com.joebuildsthings.gamedeck.ui.theme.*
-
-private data class Mode(
-    val name: String,
-    val blurb: String,
-    val color: Color,
-)
-
-private val modes = listOf(
-    Mode("Balanced", "Everyday", WarnAmber),
-    Mode("Performance", "Max power", AccentRed),
-    Mode("Battery", "Save juice", SuccessGreen),
-)
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
@@ -37,94 +30,180 @@ fun HomeScreen(
     onToggleOverlay: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
-    var selected by remember { mutableIntStateOf(0) }
-    var overlayOn by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    val activeMode by GameDeckEngine.mode.collectAsState()
+    val overlayRunning by GameDeckEngine.overlayRunning.collectAsState()
+    val stats by GameDeckEngine.telemetry.collectAsState()
+
     var hasPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasPermission = Settings.canDrawOverlays(context)
+                GameDeckEngine.updateTelemetry(context, stats.fps)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (!overlayRunning) {
+                GameDeckEngine.updateTelemetry(context, 60)
+            }
+            delay(2000L)
+        }
+    }
 
     Column(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 18.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+            .background(BgDark)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        MechaFrame(
+            accentColor = activeMode.accent,
+            bgColor = PanelDark,
+            cutDp = 12.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                "PERFORMANCE MODE",
-                color = MutedGrey,
-                fontSize = 10.sp,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                modes[selected].name.uppercase(),
-                color = modes[selected].color,
-                fontSize = 10.sp,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .size(8.dp)
+                                .background(activeMode.accent)
+                        )
+                        Text(
+                            text = "GAMEDECK // ARMORY CORE",
+                            color = activeMode.accent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.5.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    Text(
+                        text = "XARENA x REDMAGIC TACTICAL CONSOLE",
+                        color = MutedGrey,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                Box(
+                    Modifier
+                        .background(activeMode.dimBg)
+                        .border(1.dp, activeMode.accent)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = activeMode.title,
+                        color = activeMode.accent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.5.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            modes.forEachIndexed { i, mode ->
-                ModeCard(
+        SectionHeader(
+            leftTitle = "01 // ENGINE PROFILE",
+            rightStatus = activeMode.codeName,
+            accentColor = activeMode.accent
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            EngineMode.values().forEach { mode ->
+                MechaModeCard(
                     mode = mode,
-                    selected = selected == i,
+                    selected = activeMode == mode,
                     modifier = Modifier.weight(1f),
-                    onClick = { selected = i }
+                    onClick = { GameDeckEngine.setMode(mode) }
                 )
             }
         }
 
-        Spacer(Modifier.height(4.dp))
-
-        Text(
-            "FLOATING HUD",
-            color = MutedGrey,
-            fontSize = 10.sp,
-            letterSpacing = 2.sp,
-            fontWeight = FontWeight.SemiBold,
+        SectionHeader(
+            leftTitle = "02 // IN-GAME FLOATING HUD",
+            rightStatus = if (overlayRunning) "HUD ACTIVE" else if (hasPermission) "STANDBY" else "LOCKED",
+            accentColor = if (overlayRunning) SuccessGreen else if (hasPermission) CyberCyan else WarnAmber
         )
 
-        Surface(
-            color = PanelDark,
-            shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, LineDark),
+        MechaFrame(
+            accentColor = if (overlayRunning) activeMode.accent else LineBright,
+            bgColor = PanelDark,
+            cutDp = 12.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("Overlay HUD", color = InkLight, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                        Spacer(Modifier.height(2.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            if (hasPermission) "Ready" else "Grant permission",
-                            color = if (hasPermission) SuccessGreen else WarnAmber,
-                            fontSize = 11.sp
+                            text = "TACTICAL OVERLAY SERVICE",
+                            color = InkLight,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = when {
+                                !hasPermission -> "PERMISSION REQUIRED: TAP SWITCH TO GRANT"
+                                overlayRunning -> "RUNNING: TAP PILL IN-GAME TO EXPAND WINGS"
+                                else -> "READY: DEPLOY FLOATING TELEMETRY BLADE"
+                            },
+                            color = when {
+                                !hasPermission -> WarnAmber
+                                overlayRunning -> SuccessGreen
+                                else -> MutedGrey
+                            },
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace
                         )
                     }
+
                     Switch(
-                        checked = overlayOn,
-                        onCheckedChange = { on ->
+                        checked = overlayRunning,
+                        onCheckedChange = { wantOn ->
                             if (!hasPermission) {
                                 onRequestOverlay()
                             } else {
-                                overlayOn = on
-                                onToggleOverlay(on)
+                                GameDeckEngine.setOverlayRunning(wantOn)
+                                onToggleOverlay(wantOn)
                             }
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = AccentRed,
-                            checkedTrackColor = AccentRedDim,
+                            checkedThumbColor = BgDark,
+                            checkedTrackColor = activeMode.accent,
                             uncheckedThumbColor = MutedGrey,
-                            uncheckedTrackColor = LineDark,
+                            uncheckedTrackColor = LineDark
                         )
                     )
                 }
@@ -132,96 +211,192 @@ fun HomeScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(8.dp))
                         .background(BgDark)
-                        .border(1.dp, LineDark, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 14.dp),
+                        .border(1.dp, LineDark)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("LIVE PREVIEW", color = MutedGrey, fontSize = 9.sp, letterSpacing = 2.sp)
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(AccentRedDim)
-                            .border(1.dp, AccentRed, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 14.dp, vertical = 5.dp)
-                    ) {
+                    Column {
                         Text(
-                            "-- FPS",
-                            color = AccentRedBright,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            text = "HUD BLADE PREVIEW",
+                            color = MutedGrey,
+                            fontSize = 9.sp,
+                            letterSpacing = 1.5.sp,
+                            fontFamily = FontFamily.Monospace
                         )
+                        Text(
+                            text = "Tap in-game to open Reticle + Boost",
+                            color = LineBright,
+                            fontSize = 9.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    MechaFrame(
+                        accentColor = activeMode.accent,
+                        bgColor = PanelDark,
+                        cutDp = 6.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .height(12.dp)
+                                    .background(activeMode.accent)
+                            )
+                            Text(
+                                text = "${stats.fps} FPS | ${stats.tempC}°C",
+                                color = InkLight,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(4.dp))
-
-        Text(
-            "LIVE TELEMETRY",
-            color = MutedGrey,
-            fontSize = 10.sp,
-            letterSpacing = 2.sp,
-            fontWeight = FontWeight.SemiBold,
+        SectionHeader(
+            leftTitle = "03 // REAL-TIME TELEMETRY",
+            rightStatus = "${stats.cpuFreqMhz} MHz",
+            accentColor = activeMode.accent
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard("FPS", "--", Modifier.weight(1f))
-            StatCard("CPU", "--", Modifier.weight(1f))
+            MechaTelemetryCard(
+                label = "FRAME RATE",
+                value = "${stats.fps}",
+                unit = "FPS",
+                subText = "TARGET: 60+ HZ",
+                loadPercent = ((stats.fps / 60f) * 100f).toInt().coerceIn(10, 100),
+                accent = activeMode.accent,
+                modifier = Modifier.weight(1f)
+            )
+            MechaTelemetryCard(
+                label = "CPU CORES",
+                value = "${stats.cpuLoad}%",
+                unit = "${stats.cpuFreqMhz}MHz",
+                subText = "GOVERNOR LOAD",
+                loadPercent = stats.cpuLoad,
+                accent = activeMode.accent,
+                modifier = Modifier.weight(1f)
+            )
         }
+
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard("RAM", "--", Modifier.weight(1f))
-            StatCard("TEMP", "--", Modifier.weight(1f))
+            MechaTelemetryCard(
+                label = "MEMORY ALLOC",
+                value = "${stats.ramLoad}%",
+                unit = "${stats.ramUsedGb}/${stats.ramTotalGb}G",
+                subText = "TAP TO PURGE RAM",
+                loadPercent = stats.ramLoad,
+                accent = CyberCyan,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { GameDeckEngine.purgeBackgroundMemory(context) }
+            )
+            MechaTelemetryCard(
+                label = "THERMAL CORE",
+                value = "${stats.tempC}°C",
+                unit = "BAT",
+                subText = "SAFE LIMIT: 45°C",
+                loadPercent = ((stats.tempC.toFloatOrNull() ?: 36f) * 2f).toInt().coerceIn(20, 100),
+                accent = WarnAmber,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
 
 @Composable
-private fun ModeCard(
-    mode: Mode,
+private fun SectionHeader(
+    leftTitle: String,
+    rightStatus: String,
+    accentColor: Color
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = leftTitle,
+            color = MutedGrey,
+            fontSize = 10.sp,
+            letterSpacing = 1.8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
+        Text(
+            text = rightStatus,
+            color = accentColor,
+            fontSize = 10.sp,
+            letterSpacing = 1.5.sp,
+            fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
+@Composable
+private fun MechaModeCard(
+    mode: EngineMode,
     selected: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val borderColor = if (selected) mode.color else LineDark
-    val bg = if (selected) mode.color.copy(alpha = 0.10f) else PanelDark
-    Box(
-        modifier
-            .height(94.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(bg)
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+    MechaFrame(
+        accentColor = if (selected) mode.accent else LineDark,
+        bgColor = if (selected) mode.dimBg else PanelDark,
+        cutDp = 10.dp,
+        modifier = modifier
+            .height(98.dp)
             .clickable { onClick() }
-            .padding(12.dp),
     ) {
         Column(
             verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxHeight()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp)
         ) {
-            Box(
-                Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) mode.color else LineDark)
-            )
-            Column {
-                Text(
-                    mode.name,
-                    color = if (selected) InkLight else MutedGrey,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.3f).sp,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier
+                        .size(8.dp)
+                        .background(if (selected) mode.accent else LineBright)
                 )
-                Spacer(Modifier.height(2.dp))
                 Text(
-                    mode.blurb,
-                    color = if (selected) mode.color.copy(alpha = 0.9f) else MutedGrey,
-                    fontSize = 10.sp,
+                    text = if (selected) "ON" else "OFF",
+                    color = if (selected) mode.accent else MutedGrey,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = mode.title,
+                    color = if (selected) InkLight else MutedGrey,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = mode.subLabel.uppercase(),
+                    color = if (selected) mode.accent else MutedGrey,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
                 )
             }
         }
@@ -229,32 +404,69 @@ private fun ModeCard(
 }
 
 @Composable
-private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Surface(
-        color = PanelDark,
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, LineDark),
-        modifier = modifier.height(78.dp),
+private fun MechaTelemetryCard(
+    label: String,
+    value: String,
+    unit: String,
+    subText: String,
+    loadPercent: Int,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    MechaFrame(
+        accentColor = accent,
+        bgColor = PanelDark,
+        cutDp = 10.dp,
+        modifier = modifier
     ) {
         Column(
             Modifier
-                .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    color = MutedGrey,
+                    fontSize = 9.sp,
+                    letterSpacing = 1.2.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = unit,
+                    color = accent,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
             Text(
-                label,
-                color = MutedGrey,
-                fontSize = 9.sp,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.SemiBold,
+                text = value,
+                color = InkLight,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace
             )
+
+            SegmentedLoadBar(
+                percent = loadPercent,
+                accentColor = accent,
+                segments = 12,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Text(
-                value,
-                color = AccentRedBright,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5f).sp,
+                text = subText,
+                color = MutedGrey,
+                fontSize = 8.sp,
+                fontFamily = FontFamily.Monospace
             )
         }
     }

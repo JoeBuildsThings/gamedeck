@@ -12,19 +12,23 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,12 +36,7 @@ import androidx.core.content.ContextCompat
 import com.joebuildsthings.gamedeck.screens.GamesScreen
 import com.joebuildsthings.gamedeck.screens.HomeScreen
 import com.joebuildsthings.gamedeck.screens.SettingsScreen
-import com.joebuildsthings.gamedeck.ui.theme.AccentRed
-import com.joebuildsthings.gamedeck.ui.theme.BgDark
-import com.joebuildsthings.gamedeck.ui.theme.GameDeckTheme
-import com.joebuildsthings.gamedeck.ui.theme.InkLight
-import com.joebuildsthings.gamedeck.ui.theme.LineDark
-import com.joebuildsthings.gamedeck.ui.theme.MutedGrey
+import com.joebuildsthings.gamedeck.ui.theme.*
 
 data class Tab(val label: String, val icon: ImageVector)
 
@@ -53,18 +52,20 @@ class MainActivity : ComponentActivity() {
                     AlertDialog(
                         onDismissRequest = { crashText = null },
                         confirmButton = {
-                            TextButton(onClick = { crashText = null }) { Text("Close") }
+                            TextButton(onClick = { crashText = null }) { Text("Close", fontFamily = FontFamily.Monospace) }
                         },
-                        title = { Text("Last crash") },
+                        title = { Text("CRASH LOG INTERCEPTED", fontFamily = FontFamily.Monospace, color = AccentRed) },
                         text = {
                             SelectionContainer {
                                 Text(
                                     text,
                                     fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace,
                                     modifier = Modifier.verticalScroll(rememberScrollState())
                                 )
                             }
-                        }
+                        },
+                        containerColor = PanelDark
                     )
                 }
                 Surface(
@@ -103,17 +104,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameDeckApp(
     onRequestOverlay: () -> Unit,
     onToggleOverlay: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
+    val activeMode by GameDeckEngine.mode.collectAsState()
     val tabs = listOf(
-        Tab("Home", Icons.Filled.Home),
-        Tab("Games", Icons.Filled.SportsEsports),
-        Tab("Settings", Icons.Filled.Settings),
+        Tab("ARMORY", Icons.Filled.Home),
+        Tab("GAMES", Icons.Filled.SportsEsports),
+        Tab("CONFIG", Icons.Filled.Settings),
     )
     var current by remember { mutableIntStateOf(0) }
 
@@ -130,59 +131,105 @@ fun GameDeckApp(
         }
     }
 
-    Scaffold(
-        containerColor = BgDark,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Text(
-                            "GameDeck",
-                            color = InkLight,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            letterSpacing = (-0.5f).sp,
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text("v0.1", color = MutedGrey, fontSize = 11.sp)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BgDark)
-            )
-        },
-        bottomBar = {
-            NavigationBar(containerColor = BgDark, tonalElevation = 0.dp) {
-                tabs.forEachIndexed { i, tab ->
-                    NavigationBarItem(
-                        selected = current == i,
-                        onClick = { current = i },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label, fontSize = 11.sp, fontWeight = FontWeight.Medium) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = AccentRed,
-                            selectedTextColor = AccentRed,
-                            unselectedIconColor = MutedGrey,
-                            unselectedTextColor = MutedGrey,
-                            indicatorColor = LineDark,
-                        )
-                    )
-                }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(BgDark)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PanelDark)
+                .border(1.dp, LineDark)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    Modifier
+                        .size(10.dp)
+                        .background(activeMode.accent)
+                )
+                Text(
+                    text = "GAMEDECK OS",
+                    color = InkLight,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 1.2.sp
+                )
             }
+            Text(
+                text = "v1.0.4-MECHA",
+                color = MutedGrey,
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
         }
-    ) { pad ->
+
         Box(
-            Modifier
-                .fillMaxSize()
-                .background(BgDark)
-                .padding(pad)
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
         ) {
             when (current) {
                 0 -> HomeScreen(
                     onRequestOverlay = onRequestOverlay,
-                    onToggleOverlay = onToggleOverlay,
+                    onRequestLaunchGames = { current = 1 },
+                    onToggleOverlay = onToggleOverlay
                 )
-                1 -> GamesScreen()
+                1 -> GamesScreen(onLaunchOverlayAndGame = { pkg ->
+                    onToggleOverlay(true)
+                    runCatching {
+                        val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                        if (launchIntent != null) {
+                            context.startActivity(launchIntent)
+                        }
+                    }
+                })
                 2 -> SettingsScreen(onRequestOverlay = onRequestOverlay)
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PanelDark)
+                .border(1.dp, LineDark)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            tabs.forEachIndexed { i, tab ->
+                val selected = current == i
+                MechaFrame(
+                    accentColor = if (selected) activeMode.accent else LineDark,
+                    bgColor = if (selected) activeMode.dimBg else BgDark,
+                    cutDp = 6.dp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { current = i }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = tab.label,
+                            color = if (selected) activeMode.accent else MutedGrey,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.2.sp
+                        )
+                    }
+                }
             }
         }
     }
