@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun HomeScreen(
     onRequestOverlay: () -> Unit,
+    onRequestLaunchGames: () -> Unit = {},
     onToggleOverlay: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
